@@ -185,6 +185,20 @@
       z-index: 6;
       border: 1px solid #ffd700;
     }
+
+    /* Napisy "śpiewające" gdy leci muzyka */
+    @keyframes singPulse {
+      0%   { transform: scale(1); }
+      25%  { transform: scale(1.06); }
+      50%  { transform: scale(0.97); }
+      75%  { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    body.music-on h1,
+    body.music-on #countdown {
+      animation: singPulse 0.45s infinite ease-in-out;
+    }
   </style>
 </head>
 <body>
@@ -286,7 +300,7 @@
       "jp2_6.jpg",
       "jp2_7.jpg",
       "jp2_8.jpg",
-      "jp2_9.jpg",
+      "jp2_9.jpg",   // upewnij się, że plik ma rozszerzenie .jpg
       "jp2_10.jpg"
     ];
 
@@ -370,6 +384,16 @@
 
     setInterval(updateCountdown, 1000);
     updateCountdown();
+
+    // ------------ NAPISY „ŚPIEWAJĄCE” – muzyka on/off ------------
+
+    function setMusicPlaying(isPlaying) {
+      document.body.classList.toggle("music-on", isPlaying);
+    }
+
+    audio.addEventListener("play", () => setMusicPlaying(true));
+    audio.addEventListener("pause", () => setMusicPlaying(false));
+    audio.addEventListener("ended", () => setMusicPlaying(false));
 
     // ------------ POWIADOMIENIE O UTWORZE ------------
 
@@ -772,3 +796,4 @@
   </script>
 </body>
 </html>
+
