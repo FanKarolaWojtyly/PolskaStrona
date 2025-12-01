@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>ODLICZANIE DO PAPIEŻOWEJ</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1e90ff;
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: background-color 0.1s linear, background-image 0.1s linear;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: cover;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+
+    #countdown {
+      font-size: 4rem;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+
+    #playerWrapper {
+      display: none;
+      margin-bottom: 20px;
+    }
+
+    audio {
+      width: 320px;
+    }
+
+    #testButton {
+      background: #ffffff;
+      color: #000000;
+      font-weight: bold;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    #testButton:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .controls {
+      margin-top: 15px;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Kontener na latające JP2 / RL (Kubica używa tła) */
+    #jp2Container {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .jp2-flying {
+      position: absolute;
+      width: 150px;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.6);
+      object-fit: cover;
+      opacity: 0;
+      animation: jp2Fade 1s linear forwards;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    @keyframes jp2Fade {
+      0%   { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.1); }
+    }
+
+    /* WARIACJA TEKSTU – gdy body ma klasę .crazy */
+    @keyframes crazyMove {
+      0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+      25%  { transform: translate(-10px, -5px) rotate(-5deg) scale(1.05); }
+      50%  { transform: translate(10px, 5px) rotate(5deg) scale(0.95); }
+      75%  { transform: translate(-5px, 10px) rotate(-8deg) scale(1.08); }
+      100% { transform: translate(5px, -10px) rotate(8deg) scale(0.9); }
+    }
+
+    body.crazy .content {
+      animation: crazyMove 0.5s infinite alternate ease-in-out;
+    }
+
+    /* ADMIN PANEL */
+    .admin-toggle {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    .admin-box {
+      position: fixed;
+      top: 40px;
+      left: 10px;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      z-index: 5;
+      width: 230px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .admin-box input[type="password"],
+    .admin-box input[type="number"] {
+      width: 100%;
+      padding: 4px;
+      border-radius: 4px;
+      border: none;
+      margin-bottom: 5px;
+      font-size: 0.8rem;
+    }
+
+    .admin-box button {
+      width: 100%;
+      padding: 5px;
+      border-radius: 4px;
+      border: none;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+
+    .admin-note {
+      font-size: 0.7rem;
+      opacity: 0.8;
+      margin-top: 3px;
+    }
+
+    /* POWIADOMIENIE O WYLOSOWANYM UTWORZE */
+    #songNotice {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: #ffd700;
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      z-index: 6;
+      border: 1px solid #ffd700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ADMIN TOGGLE -->
+  <div id="adminToggle" class="admin-toggle">ADMIN</div>
+
+  <!-- ADMIN PANEL -->
+  <div id="adminBox" class="admin-box hidden">
+    <div id="adminPasswordArea">
+      <div style="margin-bottom:4px;">Hasło admina:</div>
+      <input type="password" id="adminPassword" placeholder="Wpisz hasło" />
+      <button id="adminLoginBtn">Wejdź</button>
+      <div class="admin-note">Hasła: Papieżowa / Lewy / Kubica</div>
+    </div>
+    <div id="adminControls" class="hidden">
+      <div style="margin-bottom:4px; font-weight:bold;">Panel Papieżowej</div>
+      <label>Czas (sekundy):</label>
+      <input type="number" id="adminDuration" min="1" value="10" />
+      <button id="adminStartBtn">Start Papieżowej</button>
+      <button id="adminStopBtn">Stop Papieżowej</button>
+      <div class="admin-note">Działa tylko lokalnie w tej przeglądarce.</div>
+    </div>
+  </div>
+
+  <!-- POWIADOMIENIE O UTWORZE -->
+  <div id="songNotice" class="hidden"></div>
+
+  <div class="content">
+    <h1>ODLICZANIE DO PAPIEŻOWEJ</h1>
+    <div id="countdown">00:00:00</div>
+
+    <div id="playerWrapper">
+      <audio id="audioPlayer" src="papiezowa.mp3" controls></audio>
+    </div>
+
+    <button id="testButton">TESTUJ PAPIEŻOWĄ</button>
+
+    <div class="controls">
+      <label>Głośność: <span id="volumeValue">100</span>%</label><br>
+      <input type="range" id="volumeRange" min="0" max="100" value="100" />
+    </div>
+  </div>
+
+  <!-- Kontener na latające zdjęcia (JP2 / RL) -->
+  <div id="jp2Container"></div>
+
+  <script>
+    // ------------ USTAWIENIA ------------
+
+    const TARGET_HOUR = 21;
+    const TARGET_MINUTE = 37;
+    const TARGET_SECOND = 0;
+
+    // okno Papieżowej: 21:37:00 – 21:40:00
+    const WINDOW_START_SECONDS = 21 * 3600 + 37 * 60;
+    const WINDOW_END_SECONDS   = 21 * 3600 + 40 * 60;
+
+    const DEFAULT_BG = "#1e90ff";
+    const WIKI_URL = "https://pl.wikipedia.org/wiki/Jan_Paweł_II";
+    const RL_URL   = "https://www.espn.in/football/match/_/gameId/427078/vfl-wolfsburg-bayern-munich";
+
+    const ADMIN_PASSWORD_PAPIEZ = "MLODEPODHALEPANY2137";
+    const ADMIN_PASSWORD_LEWY   = "RobertLewandowski";
+    const ADMIN_PASSWORD_KUBICA = "RobertKubica";
+
+    const LEWY_DURATION_MS   = 90 * 1000;       // 1:30 min
+    const KUBICA_DURATION_MS = 4 * 60 * 1000;   // 4 min
+    const BARAKA_CHANCE      = 0.30;            // 30% szans na Barkę
+
+    // ------------ ELEMENTY DOM ------------
+
+    const countdownEl   = document.getElementById("countdown");
+    const playerWrapper = document.getElementById("playerWrapper");
+    const audio         = document.getElementById("audioPlayer");
+    const testBtn       = document.getElementById("testButton");
+    const volRange      = document.getElementById("volumeRange");
+    const volValue      = document.getElementById("volumeValue");
+    const jp2Container  = document.getElementById("jp2Container");
+
+    const adminToggle       = document.getElementById("adminToggle");
+    const adminBox          = document.getElementById("adminBox");
+    const adminPasswordArea = document.getElementById("adminPasswordArea");
+    const adminPassword     = document.getElementById("adminPassword");
+    const adminLoginBtn     = document.getElementById("adminLoginBtn");
+    const adminControls     = document.getElementById("adminControls");
+    const adminDuration     = document.getElementById("adminDuration");
+    const adminStartBtn     = document.getElementById("adminStartBtn");
+    const adminStopBtn      = document.getElementById("adminStopBtn");
+
+    const songNotice        = document.getElementById("songNotice");
+
+    const jp2Images = [
+      "jp2_1.jpg",
+      "jp2_2.jpg",
+      "jp2_3.jpg",
+      "jp2_4.jpg",
+      "jp2_5.jpg",
+      "jp2_6.jpg",
+      "jp2_7.jpg",
+      "jp2_8.jpg",
+      "jp2_9.jpg",
+      "jp2_10.jpg"
+    ];
+
+    const rlImages = [
+      "RL1.jpg",
+      "RL2.jpg",
+      "RL3.jpg",
+      "RL4.jpg",
+      "RL5.jpg",
+      "RL6.jpg"
+    ];
+
+    const rkImages = [
+      "RK1.jpg",
+      "RK2.jpg",
+      "RK3.jpg",
+      "RK4.jpg",
+      "RK5.jpg",
+      "RK6.jpg"
+    ];
+
+    let effectsInterval = null;   // Papieżowa (JP2 + tęczowe tło)
+    let testMode = false;
+    let cooldown = false;
+    let windowActive = false;
+
+    let manualMode = false;
+    let manualTimeout = null;
+
+    let lewyMode = false;
+    let lewyInterval = null;
+    let lewyTimeout = null;
+    let lewyIsRed = false;
+
+    let kubicaMode = false;
+    let kubicaInterval = null;
+    let kubicaTimeout = null;
+    let kubicaIndex = 0;
+
+    const originalAudioSrc = audio.src;
+    let songNoticeTimeout = null;
+
+    // ------------ GŁOŚNOŚĆ ------------
+
+    volRange.addEventListener("input", () => {
+      const vol = parseInt(volRange.value, 10);
+      volValue.textContent = vol;
+      audio.volume = vol / 100;
+    });
+
+    audio.volume = 1.0;
+
+    // ------------ ODLICZANIE ------------
+
+    function getNextTargetTime() {
+      const now = new Date();
+      const t = new Date();
+      t.setHours(TARGET_HOUR, TARGET_MINUTE, TARGET_SECOND, 0);
+      if (t <= now) t.setDate(t.getDate() + 1);
+      return t;
+    }
+
+    let targetTime = getNextTargetTime();
+
+    function updateCountdown() {
+      const now = new Date();
+      let diff = targetTime - now;
+
+      if (diff <= 0) {
+        targetTime = getNextTargetTime();
+        diff = targetTime - now;
+      }
+
+      const totalSeconds = Math.floor(diff / 1000);
+      const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+      const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const s = String(totalSeconds % 60).padStart(2, "0");
+
+      countdownEl.textContent = `${h}:${m}:${s}`;
+    }
+
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    // ------------ POWIADOMIENIE O UTWORZE ------------
+
+    function showSongNotice(text) {
+      songNotice.textContent = text;
+      songNotice.classList.remove("hidden");
+      if (songNoticeTimeout) clearTimeout(songNoticeTimeout);
+      songNoticeTimeout = setTimeout(() => {
+        songNotice.classList.add("hidden");
+      }, 2000);
+    }
+
+    // ------------ WYBÓR UTWORU PAPIEŻOWEJ (PAPIEŻOWA / BARKA) ------------
+
+    function choosePapiezowaSong() {
+      const isBarka = Math.random() < BARAKA_CHANCE;
+      if (isBarka) {
+        audio.src = "barka.mp3";
+        showSongNotice("Wylosowano Barkę!");
+      } else {
+        audio.src = originalAudioSrc; // papiezowa.mp3
+        showSongNotice("Wylosowano Papieżową");
+      }
+      audio.load();
+    }
+
+    // ------------ EFEKTY PAPIEŻOWEJ (JP2 + tęczowe tło) ------------
+
+    function spawnJP2() {
+      if (jp2Images.length === 0) return;
+
+      const img = document.createElement("img");
+      img.className = "jp2-flying";
+
+      const idx = Math.floor(Math.random() * jp2Images.length);
+      img.src = jp2Images[idx];
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const imgWidth = 150;
+
+      const x = Math.random() * (vw - imgWidth);
+      const y = Math.random() * (vh - imgWidth);
+
+      img.style.left = x + "px";
+      img.style.top  = y + "px";
+
+      img.addEventListener("click", (e) => {
+        e.stopPropagation();
+        window.open(WIKI_URL, "_blank");
+      });
+
+      jp2Container.appendChild(img);
+
+      setTimeout(() => {
+        if (img.parentNode) img.parentNode.removeChild(img);
+      }, 1000);
+    }
+
+    function startEffects() {
+      stopEffects();
+      document.body.classList.add("crazy");
+      effectsInterval = setInterval(() => {
+        document.body.style.backgroundImage = "";
+        document.body.style.backgroundColor =
+          `rgb(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255})`;
+        spawnJP2();
+      }, 200);
+    }
+
+    function stopEffects() {
+      if (effectsInterval !== null) {
+        clearInterval(effectsInterval);
+        effectsInterval = null;
+      }
+      document.body.classList.remove("crazy");
+      document.body.style.backgroundColor = DEFAULT_BG;
+      document.body.style.backgroundImage = "";
+      jp2Container.innerHTML = "";
+    }
+
+    function showPlayer() { playerWrapper.style.display = "block"; }
+    function hidePlayer() { playerWrapper.style.display = "none"; }
+
+    // ------------ MANUAL PAPIEŻOWA (ADMIN) ------------
+
+    function stopManualPapiezowa() {
+      if (!manualMode) return;
+      manualMode = false;
+      if (manualTimeout !== null) {
+        clearTimeout(manualTimeout);
+        manualTimeout = null;
+      }
+      audio.pause();
+      stopEffects();
+
+      const now = new Date();
+      const secNow = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+      if (!(secNow >= WINDOW_START_SECONDS && secNow < WINDOW_END_SECONDS)) {
+        hidePlayer();
+      }
+    }
+
+    function startManualPapiezowa(durationMs) {
+      if (lewyMode || kubicaMode) return;
+      stopManualPapiezowa();
+      manualMode = true;
+      showPlayer();
+
+      choosePapiezowaSong();
+      try { audio.currentTime = 0; } catch (e) {}
+      startEffects();
+      audio.play().catch(() => {});
+
+      manualTimeout = setTimeout(() => {
+        stopManualPapiezowa();
+      }, durationMs);
+    }
+
+    // ------------ LEWY MODE (biało-czerwone + RL + grappa) ------------
+
+    function spawnRL() {
+      if (rlImages.length === 0) return;
+
+      const img = document.createElement("img");
+      img.className = "jp2-flying";
+
+      const idx = Math.floor(Math.random() * rlImages.length);
+      img.src = rlImages[idx];
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const imgWidth = 150;
+
+      const x = Math.random() * (vw - imgWidth);
+      const y = Math.random() * (vh - imgWidth);
+
+      img.style.left = x + "px";
+      img.style.top  = y + "px";
+
+      // klik w RL → ESPN
+      img.addEventListener("click", (e) => {
+        e.stopPropagation();
+        window.open(RL_URL, "_blank");
+      });
+
+      jp2Container.appendChild(img);
+
+      setTimeout(() => {
+        if (img.parentNode) img.parentNode.removeChild(img);
+      }, 1000);
+    }
+
+    function startLewyEffects() {
+      stopLewyEffects();
+      document.body.classList.add("crazy");
+      lewyInterval = setInterval(() => {
+        document.body.style.backgroundImage = "";
+        lewyIsRed = !lewyIsRed;
+        document.body.style.backgroundColor = lewyIsRed ? "#ff0000" : "#ffffff";
+        spawnRL();
+      }, 200);
+    }
+
+    function stopLewyEffects() {
+      if (lewyInterval !== null) {
+        clearInterval(lewyInterval);
+        lewyInterval = null;
+      }
+      document.body.classList.remove("crazy");
+      document.body.style.backgroundColor = DEFAULT_BG;
+      document.body.style.backgroundImage = "";
+      jp2Container.innerHTML = "";
+    }
+
+    function stopLewyMode() {
+      if (!lewyMode) return;
+      lewyMode = false;
+      if (lewyTimeout !== null) {
+        clearTimeout(lewyTimeout);
+        lewyTimeout = null;
+      }
+      audio.pause();
+      stopLewyEffects();
+      audio.src = originalAudioSrc;
+      audio.load();
+      hidePlayer();
+    }
+
+    function startLewyMode() {
+      // wyłączamy wszystko inne
+      stopManualPapiezowa();
+      stopEffects();
+      stopKubicaMode();
+      testMode = false;
+      cooldown = false;
+      windowActive = false;
+
+      lewyMode = true;
+      showPlayer();
+
+      audio.pause();
+      audio.src = "grappa.mp3";
+      audio.load();
+      try { audio.currentTime = 0; } catch (e) {}
+      audio.play().catch(() => {});
+
+      startLewyEffects();
+
+      lewyTimeout = setTimeout(() => {
+        stopLewyMode();
+      }, LEWY_DURATION_MS);
+    }
+
+    // ------------ KUBICA MODE (tło RK + kubica.mp3) ------------
+
+    function startKubicaEffects() {
+      stopKubicaEffects();
+      document.body.classList.add("crazy");
+      kubicaInterval = setInterval(() => {
+        if (rkImages.length === 0) return;
+        kubicaIndex = (kubicaIndex + 1) % rkImages.length;
+        document.body.style.backgroundColor = DEFAULT_BG;
+        document.body.style.backgroundImage = "url('" + rkImages[kubicaIndex] + "')";
+      }, 300);
+    }
+
+    function stopKubicaEffects() {
+      if (kubicaInterval !== null) {
+        clearInterval(kubicaInterval);
+        kubicaInterval = null;
+      }
+      document.body.classList.remove("crazy");
+      document.body.style.backgroundImage = "";
+      document.body.style.backgroundColor = DEFAULT_BG;
+    }
+
+    function stopKubicaMode() {
+      if (!kubicaMode) return;
+      kubicaMode = false;
+      if (kubicaTimeout !== null) {
+        clearTimeout(kubicaTimeout);
+        kubicaTimeout = null;
+      }
+      audio.pause();
+      stopKubicaEffects();
+      audio.src = originalAudioSrc;
+      audio.load();
+      hidePlayer();
+    }
+
+    function startKubicaMode() {
+      // wyłączamy wszystko inne
+      stopManualPapiezowa();
+      stopEffects();
+      stopLewyMode();
+      testMode = false;
+      cooldown = false;
+      windowActive = false;
+
+      kubicaMode = true;
+      showPlayer();
+
+      audio.pause();
+      audio.src = "kubica.mp3";
+      audio.load();
+      try { audio.currentTime = 0; } catch (e) {}
+      audio.play().catch(() => {});
+
+      startKubicaEffects();
+
+      kubicaTimeout = setTimeout(() => {
+        stopKubicaMode();
+      }, KUBICA_DURATION_MS);
+    }
+
+    // ------------ COOLDOWN PO TEŚCIE ------------
+
+    function startCooldown() {
+      cooldown = true;
+      let t = 20;
+      testBtn.disabled = true;
+      testBtn.textContent = "COOLDOWN 20s";
+
+      const interval = setInterval(() => {
+        t--;
+        testBtn.textContent = `COOLDOWN ${t}s`;
+        if (t <= 0) {
+          clearInterval(interval);
+          cooldown = false;
+          testBtn.disabled = false;
+          testBtn.textContent = "TESTUJ PAPIEŻOWĄ";
+        }
+      }, 1000);
+    }
+
+    // ------------ TESTUJ PAPIEŻOWĄ ------------
+
+    testBtn.addEventListener("click", () => {
+      if (cooldown || manualMode || lewyMode || kubicaMode) return;
+
+      testMode = true;
+      showPlayer();
+
+      choosePapiezowaSong();
+      try { audio.currentTime = 0; } catch (e) {}
+      startEffects();
+      audio.play().catch(() => {});
+
+      setTimeout(() => {
+        testMode = false;
+        audio.pause();
+        stopEffects();
+
+        const now = new Date();
+        const secNow = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+
+        if (!(secNow >= WINDOW_START_SECONDS && secNow < WINDOW_END_SECONDS)) {
+          hidePlayer();
+        }
+
+        startCooldown();
+      }, 5000);
+    });
+
+    // ------------ AUTO 21:37–21:40 ------------
+
+    setInterval(() => {
+      if (testMode || manualMode || lewyMode || kubicaMode) return;
+
+      const now = new Date();
+      const secNow = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+      const inWindow = secNow >= WINDOW_START_SECONDS && secNow < WINDOW_END_SECONDS;
+
+      if (inWindow && !windowActive) {
+        windowActive = true;
+        showPlayer();
+
+        choosePapiezowaSong();
+        startEffects();
+        audio.play().catch(() => {});
+      } else if (!inWindow && windowActive) {
+        windowActive = false;
+        audio.pause();
+        stopEffects();
+        hidePlayer();
+      }
+    }, 500);
+
+    // ------------ ADMIN PANEL ------------
+
+    let adminOpen = false;
+    let adminUnlocked = false;
+
+    adminToggle.addEventListener("click", () => {
+      adminOpen = !adminOpen;
+      adminBox.classList.toggle("hidden", !adminOpen);
+    });
+
+    adminLoginBtn.addEventListener("click", () => {
+      const pwd = adminPassword.value.trim();
+      if (pwd === ADMIN_PASSWORD_PAPIEZ) {
+        // Papieżowy panel
+        adminUnlocked = true;
+        adminPasswordArea.classList.add("hidden");
+        adminControls.classList.remove("hidden");
+        adminToggle.textContent = "ADMIN ✅";
+      } else if (pwd === ADMIN_PASSWORD_LEWY) {
+        // Lewy mode 1:30 min
+        adminBox.classList.add("hidden");
+        adminOpen = false;
+        startLewyMode();
+      } else if (pwd === ADMIN_PASSWORD_KUBICA) {
+        // Kubica mode 4 min
+        adminBox.classList.add("hidden");
+        adminOpen = false;
+        startKubicaMode();
+      } else {
+        alert("Złe hasło.");
+      }
+    });
+
+    adminPassword.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        adminLoginBtn.click();
+      }
+    });
+
+    adminStartBtn.addEventListener("click", () => {
+      if (!adminUnlocked || lewyMode || kubicaMode) return;
+      const sec = parseInt(adminDuration.value, 10);
+      const durationSec = isNaN(sec) || sec < 1 ? 10 : sec;
+      startManualPapiezowa(durationSec * 1000);
+    });
+
+    adminStopBtn.addEventListener("click", () => {
+      if (!adminUnlocked) return;
+      stopManualPapiezowa();
+    });
+  </script>
+</body>
+</html>

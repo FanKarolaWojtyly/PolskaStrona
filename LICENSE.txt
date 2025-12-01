@@ -1,0 +1,25 @@
+Copyright © 2025 FanKarolaWojtyly
+
+ALL RIGHTS RESERVED (dotyczy WYŁĄCZNIE KODU tego projektu).
+
+Autor (FanKarolaWojtyly) zastrzega sobie pełne prawa do całego kodu źródłowego
+zawartego w tym repozytorium.
+
+Zabrania się, bez wyraźnej, pisemnej zgody autora:
+- kopiowania,
+- modyfikowania,
+- rozpowszechniania,
+- udostępniania,
+- wklejania fragmentów kodu w innych projektach,
+- udostępniania w internecie,
+- wykorzystywania w projektach komercyjnych (zarobkowych i niezarobkowych),
+- czerpania jakichkolwiek korzyści finansowych z projektu,
+- używania tego projektu lub jego części do trenowania modeli AI (sztucznej inteligencji).
+
+Jakiekolwiek naruszenie powyższych warunków stanowi złamanie praw autorskich autora.
+
+UWAGA:
+Pliki audio oraz grafiki użyte w projekcie (JP2, RL, RK, muzyka itp.)
+nie są własnością autora (FanKarolaWojtyly) i nie podlegają powyższej licencji.
+Prawa autorskie do tych materiałów należą do ich właścicieli.
+Materiały te są używane jedynie w celach prywatnych/edukacyjnych.
