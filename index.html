@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>ODLICZANIE DO PAPIEŻOWEJ</title>
+  <title>Najbardziej Polska Strona Na Świecie</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -105,7 +105,7 @@
     @keyframes crazyMove {
       0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
       25%  { transform: translate(-10px, -5px) rotate(-5deg) scale(1.05); }
-      50%  { transform: translate(10px, 5px) rotate(5deg) scale(0.95); }
+      50%  { transform: translate(10px, 5px) rotate(0.95); }
       75%  { transform: translate(-5px, 10px) rotate(-8deg) scale(1.08); }
       100% { transform: translate(5px, -10px) rotate(8deg) scale(0.9); }
     }
@@ -212,7 +212,7 @@
       <div style="margin-bottom:4px;">Hasło admina:</div>
       <input type="password" id="adminPassword" placeholder="Wpisz hasło" />
       <button id="adminLoginBtn">Wejdź</button>
-      <div class="admin-note">Hasła: Papieżowa / Lewy / Kubica</div>
+      <div class="admin-note">Hasła: Papieżowa / Lewy / Kubica / PAPAJ</div>
     </div>
     <div id="adminControls" class="hidden">
       <div style="margin-bottom:4px; font-weight:bold;">Panel Papieżowej</div>
@@ -264,10 +264,15 @@
     const ADMIN_PASSWORD_PAPIEZ = "MLODEPODHALEPANY2137";
     const ADMIN_PASSWORD_LEWY   = "RobertLewandowski";
     const ADMIN_PASSWORD_KUBICA = "RobertKubica";
+    const ADMIN_PASSWORD_PAPAJ  = "PAPAJ";
 
-    const LEWY_DURATION_MS   = 90 * 1000;       // 1:30 min
-    const KUBICA_DURATION_MS = 4 * 60 * 1000;   // 4 min
-    const BARAKA_CHANCE      = 0.30;            // 30% szans na Barkę
+    const LEWY_DURATION_MS     = 90 * 1000;       // 1:30 min
+    const KUBICA_DURATION_MS   = 4 * 60 * 1000;   // 4 min
+    const BARAKA_CHANCE        = 0.30;            // 30% szans na Barkę
+
+    const PAPAJ_DURATION_MS    = 30 * 1000;       // 30 s tryb PAPAJ
+    const PAPAJ_IMG_INTERVAL   = 50;              // 0,05 s
+    const PAPAJ_BG_INTERVAL    = 100;             // 0,1 s
 
     // ------------ ELEMENTY DOM ------------
 
@@ -339,6 +344,11 @@
     let kubicaInterval = null;
     let kubicaTimeout = null;
     let kubicaIndex = 0;
+
+    let papajMode = false;
+    let papajBgIntervalId = null;
+    let papajImgIntervalId = null;
+    let papajTimeout = null;
 
     const originalAudioSrc = audio.src;
     let songNoticeTimeout = null;
@@ -422,7 +432,7 @@
 
     // ------------ EFEKTY PAPIEŻOWEJ (JP2 + tęczowe tło) ------------
 
-    function spawnJP2() {
+    function spawnJP2(durationMs = 1000) {
       if (jp2Images.length === 0) return;
 
       const img = document.createElement("img");
@@ -450,7 +460,7 @@
 
       setTimeout(() => {
         if (img.parentNode) img.parentNode.removeChild(img);
-      }, 1000);
+      }, durationMs);
     }
 
     function startEffects() {
@@ -460,7 +470,7 @@
         document.body.style.backgroundImage = "";
         document.body.style.backgroundColor =
           `rgb(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255})`;
-        spawnJP2();
+        spawnJP2(1000);
       }, 200);
     }
 
@@ -477,6 +487,83 @@
 
     function showPlayer() { playerWrapper.style.display = "block"; }
     function hidePlayer() { playerWrapper.style.display = "none"; }
+
+    // ------------ TRYB PAPAJ (HARDCORE JP2) ------------
+
+    function stopPapajEffects() {
+      if (papajBgIntervalId !== null) {
+        clearInterval(papajBgIntervalId);
+        papajBgIntervalId = null;
+      }
+      if (papajImgIntervalId !== null) {
+        clearInterval(papajImgIntervalId);
+        papajImgIntervalId = null;
+      }
+      document.body.classList.remove("crazy");
+      document.body.style.backgroundColor = DEFAULT_BG;
+      document.body.style.backgroundImage = "";
+      jp2Container.innerHTML = "";
+    }
+
+    function startPapajEffects() {
+      stopPapajEffects();
+      document.body.classList.add("crazy");
+
+      // bardzo jasne kolory RGB: 200–255
+      papajBgIntervalId = setInterval(() => {
+        document.body.style.backgroundImage = "";
+        const r = 200 + Math.floor(Math.random() * 56);
+        const g = 200 + Math.floor(Math.random() * 56);
+        const b = 200 + Math.floor(Math.random() * 56);
+        document.body.style.backgroundColor = `rgb(${r},${g},${b})`;
+      }, PAPAJ_BG_INTERVAL);
+
+      // zdjęcia JP2 co 0,05 s, każde 2 s
+      papajImgIntervalId = setInterval(() => {
+        spawnJP2(2000);
+      }, PAPAJ_IMG_INTERVAL);
+    }
+
+    function stopPapajMode() {
+      if (!papajMode) return;
+      papajMode = false;
+      if (papajTimeout !== null) {
+        clearTimeout(papajTimeout);
+        papajTimeout = null;
+      }
+      audio.pause();
+      stopPapajEffects();
+      audio.src = originalAudioSrc;
+      audio.load();
+      hidePlayer();
+    }
+
+    function startPapajMode() {
+      // wyłączamy wszystko inne
+      stopManualPapiezowa();
+      stopEffects();
+      stopLewyMode();
+      stopKubicaMode();
+      testMode = false;
+      cooldown = false;
+      windowActive = false;
+
+      stopPapajMode();
+      papajMode = true;
+      showPlayer();
+
+      audio.pause();
+      audio.src = "barka2.mp3";
+      audio.load();
+      try { audio.currentTime = 0; } catch (e) {}
+
+      startPapajEffects();
+      audio.play().catch(() => {});
+
+      papajTimeout = setTimeout(() => {
+        stopPapajMode();
+      }, PAPAJ_DURATION_MS);
+    }
 
     // ------------ MANUAL PAPIEŻOWA (ADMIN) ------------
 
@@ -498,7 +585,7 @@
     }
 
     function startManualPapiezowa(durationMs) {
-      if (lewyMode || kubicaMode) return;
+      if (lewyMode || kubicaMode || papajMode) return;
       stopManualPapiezowa();
       manualMode = true;
       showPlayer();
@@ -588,6 +675,7 @@
       stopManualPapiezowa();
       stopEffects();
       stopKubicaMode();
+      stopPapajMode();
       testMode = false;
       cooldown = false;
       windowActive = false;
@@ -650,6 +738,7 @@
       stopManualPapiezowa();
       stopEffects();
       stopLewyMode();
+      stopPapajMode();
       testMode = false;
       cooldown = false;
       windowActive = false;
@@ -693,7 +782,7 @@
     // ------------ TESTUJ PAPIEŻOWĄ ------------
 
     testBtn.addEventListener("click", () => {
-      if (cooldown || manualMode || lewyMode || kubicaMode) return;
+      if (cooldown || manualMode || lewyMode || kubicaMode || papajMode) return;
 
       testMode = true;
       showPlayer();
@@ -722,7 +811,7 @@
     // ------------ AUTO 21:37–21:40 ------------
 
     setInterval(() => {
-      if (testMode || manualMode || lewyMode || kubicaMode) return;
+      if (testMode || manualMode || lewyMode || kubicaMode || papajMode) return;
 
       const now = new Date();
       const secNow = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
@@ -771,6 +860,11 @@
         adminBox.classList.add("hidden");
         adminOpen = false;
         startKubicaMode();
+      } else if (pwd === ADMIN_PASSWORD_PAPAJ) {
+        // Tryb PAPAJ – hardcore
+        adminBox.classList.add("hidden");
+        adminOpen = false;
+        startPapajMode();
       } else {
         alert("Złe hasło.");
       }
@@ -783,7 +877,7 @@
     });
 
     adminStartBtn.addEventListener("click", () => {
-      if (!adminUnlocked || lewyMode || kubicaMode) return;
+      if (!adminUnlocked || lewyMode || kubicaMode || papajMode) return;
       const sec = parseInt(adminDuration.value, 10);
       const durationSec = isNaN(sec) || sec < 1 ? 10 : sec;
       startManualPapiezowa(durationSec * 1000);
